@@ -12,7 +12,7 @@ export interface AlloyFilterCallbackResponseType<Events extends AlloyPossibleEve
 
 export interface AlloyApplyFilterResponse<Events extends AlloyPossibleEventsMapType, Event extends keyof Events> {
     value: Events[Event],
-    cancel?: boolean
+    cancelEvent?: boolean
 }
 
 export type AlloyFilterCallbackType<Events extends AlloyPossibleEventsMapType, Event extends keyof Events> = (payload: Events[Event]) => AlloyFilterCallbackResponseType<Events,Event>|Promise<AlloyFilterCallbackResponseType<Events,Event>>;

@@ -129,7 +129,7 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
             return;
 
         const filterResponse = await this.applyFilters(eventName,payload);
-        if(filterResponse.cancel)
+        if(filterResponse.cancelEvent)
             return;
 
         for(let i = 0; i < registrations.length; i++){
@@ -162,7 +162,7 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
             }
 
             if(response.cancelEvent)
-                return {value: response.value, cancel: true};
+                return {value: response.value, cancelEvent: true};
 
             if(response.stopFilters)
                 return {value: response.value};
