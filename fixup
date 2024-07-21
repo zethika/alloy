@@ -1,0 +1,20 @@
+#!/bin/bash
+
+cat >dist/cjs/package.json <<!EOF
+{
+    "type": "commonjs"
+}
+!EOF
+
+cat >dist/mjs/package.json <<!EOF
+{
+    "type": "module"
+}
+!EOF
+
+search_dir="dist/mjs"
+js_files=$(find "$search_dir" -type f -name "*.js")
+for file in $js_files; do
+    sed -E 's/^(import.*)"\.(.*)";$/\1".\2.js";/g' "$file" > "$file.tmp"
+    mv "$file.tmp" "$file"
+done
