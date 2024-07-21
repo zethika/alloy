@@ -22,6 +22,17 @@ describe('Alloy/listeners',() => {
         // Should have been called 3 times in total at this point
         expect(cb).toHaveBeenCalledTimes(3)
     })
+    test('Can handle just being fed a function', async () => {
+        const alloy = new Alloy<TestEvents>();
+
+        const cb = jest.fn();
+        alloy.addEventListener("noParameterTest",cb)
+        await alloy.triggerEvent("noParameterTest",undefined)
+
+        // Should have been triggered once at this point, called with undefined
+        expect(cb).toHaveBeenCalledTimes(1)
+        expect(cb).toHaveBeenCalledWith(undefined)
+    })
     test('Can have multiple listeners', async () => {
         const alloy = new Alloy<TestEvents>();
 

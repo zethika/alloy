@@ -6,9 +6,15 @@ export type AlloyEventListenerCallbackType<Events extends AlloyPossibleEventsMap
 
 export interface AlloyFilterCallbackResponseType<Events extends AlloyPossibleEventsMapType, Event extends keyof Events> {
     stopFilters?: boolean,
-    preventEvent?: boolean,
+    cancelEvent?: boolean,
     value: Events[Event]
 }
+
+export interface AlloyApplyFilterResponse<Events extends AlloyPossibleEventsMapType, Event extends keyof Events> {
+    value: Events[Event],
+    cancel?: boolean
+}
+
 export type AlloyFilterCallbackType<Events extends AlloyPossibleEventsMapType, Event extends keyof Events> = (payload: Events[Event]) => AlloyFilterCallbackResponseType<Events,Event>|Promise<AlloyFilterCallbackResponseType<Events,Event>>;
 
 export interface AlloyRegistrationType {

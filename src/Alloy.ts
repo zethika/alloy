@@ -3,11 +3,12 @@ import {
     AlloyEventListenerRegistrationType,
     AlloyPossibleEventsMapType,
     AlloyEventListenerCallbackType,
-    AlloyFilterCallbackType, AlloyFilterCallbackResponseType
+    AlloyFilterCallbackType, AlloyFilterCallbackResponseType, AlloyApplyFilterResponse
 } from "./index";
 
 type ListenerRegistrationsMapType<Events extends AlloyPossibleEventsMapType> = Partial<Record<keyof Events, Record<number,AlloyEventListenerRegistrationType<Events,any>[]>>>;
 type FiltererRegistrationsMapType<Events extends AlloyPossibleEventsMapType> = Partial<Record<keyof Events, Record<number,AlloyEventFiltererRegistrationType<Events,any>[]>>>;
+
 export default class Alloy<Events extends AlloyPossibleEventsMapType> {
     private listeners: ListenerRegistrationsMapType<Events> = {}
     private filterers: FiltererRegistrationsMapType<Events> = {}
@@ -17,9 +18,10 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
      * @param eventName
      * @param registration
      */
-    addEventListener<T extends keyof Events>(eventName: T, registration: AlloyEventListenerRegistrationType<Events,T>)
+    addEventListener<T extends keyof Events>(eventName: T, registration: AlloyEventListenerRegistrationType<Events,T>|AlloyEventListenerCallbackType<Events,T>)
     {
-        this.addRegistrationOnMap(this.listeners,eventName,registration)
+        const parsed:AlloyEventListenerRegistrationType<Events,T> = typeof registration === 'function' ? {cb: registration} : registration
+        this.addRegistrationOnMap(this.listeners,eventName,parsed)
     }
 
     /**
@@ -37,9 +39,10 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
      * @param eventName
      * @param registration
      */
-    addFilterer<T extends keyof Events>(eventName: T, registration: AlloyEventFiltererRegistrationType<Events,T>)
+    addFilterer<T extends keyof Events>(eventName: T, registration: AlloyEventFiltererRegistrationType<Events,T>|AlloyFilterCallbackType<Events,T>)
     {
-        this.addRegistrationOnMap(this.filterers,eventName,registration)
+        const parsed: AlloyEventFiltererRegistrationType<Events,T> = typeof registration === 'function' ? {cb: registration} : registration
+        this.addRegistrationOnMap(this.filterers,eventName,parsed)
     }
 
     /**
@@ -124,13 +127,16 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
             })
         });
 
+        // If no callbacks are present, we don't need to perform further calculation
         if(callbacks.length === 0)
             return;
 
-        const value = await this.applyFilters(eventName,payload);
+        const filterResponse = await this.applyFilters(eventName,payload);
+        if(filterResponse.cancel)
+            return;
 
         for(let i = 0; i < callbacks.length; i++){
-            const response = callbacks[i](value);
+            const response = callbacks[i](filterResponse.value);
             if(this.isPromise(response))
                 await response;
         }
@@ -141,10 +147,10 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
      * @param eventName
      * @param payload
      */
-    async applyFilters<T extends keyof Events>(eventName: T, payload: Events[T]): Promise<Events[T]>{
+    async applyFilters<T extends keyof Events>(eventName: T, payload: Events[T]): Promise<AlloyApplyFilterResponse<Events,T>>{
         const registrations = this.filterers[eventName];
         if (typeof registrations === 'undefined')
-            return payload;
+            return {value: payload};
 
         let callbacks: AlloyFilterCallbackType<Events,T>[] = [];
         Object.values(registrations).forEach((priorities) => {
@@ -165,13 +171,16 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
                 response = first as unknown as AlloyFilterCallbackResponseType<Events,T>;
             }
 
+            if(response.cancelEvent)
+                return {value: response.value, cancel: true};
+
             if(response.stopFilters)
-                return response.value;
+                return {value: response.value};
 
             payload = response.value;
         }
 
-        return payload;
+        return {value: payload};
     }
 
     /**
