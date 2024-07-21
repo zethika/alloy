@@ -152,4 +152,69 @@ describe('Alloy/listeners',() => {
         expect(cb).toHaveBeenCalledTimes(1)
         expect(cb).toHaveBeenCalledWith("foo123")
     })
+
+    test('Can handle stop filters', async () => {
+        const alloy = new Alloy<TestEvents>();
+
+        const cb = jest.fn();
+        alloy.addEventListener("fooTest", {cb})
+
+        alloy.addFilterer("fooTest",{
+            cb: (payload: string) => {
+                return {
+                    value: payload+'1',
+                    stopFilters: true
+                }
+            },
+            priority: 1
+        })
+
+        alloy.addFilterer("fooTest",{
+            cb: (payload: string) => {
+                return {
+                    value: payload+'2'
+                }
+            }
+        })
+
+        await alloy.triggerEvent("fooTest", "foo")
+
+        // the value should only have a 1, since the second filter shouldn't have been called
+        expect(cb).toHaveBeenCalledTimes(1)
+        expect(cb).toHaveBeenCalledWith("foo1")
+    })
+
+    test('Can handle cancel event', async () => {
+        const alloy = new Alloy<TestEvents>();
+
+        const cb = jest.fn();
+        alloy.addEventListener("fooTest", {cb})
+
+        alloy.addFilterer("fooTest",{
+            cb: (payload: string) => {
+                return {
+                    value: payload+'1',
+                    cancelEvent: true
+                }
+            },
+            priority: 1
+        })
+
+        let hasFired = false
+        alloy.addFilterer("fooTest",{
+            cb: (payload: string) => {
+                hasFired = true;
+                return {
+                    value: payload+'2'
+                }
+            }
+        })
+
+        await alloy.triggerEvent("fooTest", "foo")
+
+        // The event should never have been fired and the second filterer should never have been called
+        expect(cb).toHaveBeenCalledTimes(0)
+        expect(hasFired).toBeFalsy()
+    })
+
 })
