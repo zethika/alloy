@@ -13,6 +13,9 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
     private listeners: ListenerRegistrationsMapType<Events> = {}
     private filterers: FiltererRegistrationsMapType<Events> = {}
 
+    private orderedListeners: Partial<Record<keyof Events, AlloyEventListenerRegistrationType<Events,any>[]>> = {};
+    private orderedFilterers: Partial<Record<keyof Events, AlloyEventFiltererRegistrationType<Events,any>[]>> = {};
+
     /**
      *
      * @param eventName
@@ -22,6 +25,8 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
     {
         const parsed:AlloyEventListenerRegistrationType<Events,T> = typeof registration === 'function' ? {cb: registration} : registration
         this.addRegistrationOnMap(this.listeners,eventName,parsed)
+
+        this.recalculateOrder(eventName,'event');
     }
 
     /**
@@ -32,6 +37,7 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
     removeEventListener<T extends keyof Events>(eventName: T, fn: AlloyEventListenerCallbackType<Events,T>)
     {
         this.removeRegistrationOnMap(this.listeners,eventName,fn)
+        this.recalculateOrder(eventName,'event');
     }
 
     /**
@@ -43,6 +49,7 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
     {
         const parsed: AlloyEventFiltererRegistrationType<Events,T> = typeof registration === 'function' ? {cb: registration} : registration
         this.addRegistrationOnMap(this.filterers,eventName,parsed)
+        this.recalculateOrder(eventName,'filterer');
     }
 
     /**
@@ -53,6 +60,7 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
     removeFilterer<T extends keyof Events>(eventName: T, fn: AlloyFilterCallbackType<Events,T>)
     {
         this.removeRegistrationOnMap(this.filterers,eventName,fn)
+        this.recalculateOrder(eventName,'filterer');
     }
 
     /**
@@ -115,28 +123,17 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
      */
     async triggerEvent<T extends keyof Events>(eventName: T, payload: Events[T])
     {
-        const registrations = this.listeners[eventName];
-        if (typeof registrations === 'undefined')
-            return;
-
-
-        let callbacks: AlloyEventListenerCallbackType<Events,T>[] = [];
-        Object.values(registrations).forEach((priorities) => {
-            priorities.forEach(registration => {
-                callbacks.push(registration.cb)
-            })
-        });
-
-        // If no callbacks are present, we don't need to perform further calculation
-        if(callbacks.length === 0)
+        const registrations = this.orderedListeners[eventName];
+        // If no registrations are present, we don't need to perform further calculation
+        if (typeof registrations === 'undefined' || registrations.length === 0)
             return;
 
         const filterResponse = await this.applyFilters(eventName,payload);
         if(filterResponse.cancel)
             return;
 
-        for(let i = 0; i < callbacks.length; i++){
-            const response = callbacks[i](filterResponse.value);
+        for(let i = 0; i < registrations.length; i++){
+            const response = registrations[i].cb(filterResponse.value);
             if(this.isPromise(response))
                 await response;
         }
@@ -148,20 +145,13 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
      * @param payload
      */
     async applyFilters<T extends keyof Events>(eventName: T, payload: Events[T]): Promise<AlloyApplyFilterResponse<Events,T>>{
-        const registrations = this.filterers[eventName];
+        const registrations = this.orderedFilterers[eventName];
         if (typeof registrations === 'undefined')
             return {value: payload};
 
-        let callbacks: AlloyFilterCallbackType<Events,T>[] = [];
-        Object.values(registrations).forEach((priorities) => {
-            priorities.forEach(registration => {
-                callbacks.push(registration.cb)
-            })
-        });
-
-        for(let i = 0; i < callbacks.length; i++){
+        for(let i = 0; i < registrations.length; i++){
             let response: AlloyFilterCallbackResponseType<Events,T>;
-            const first = callbacks[i](payload);
+            const first = registrations[i].cb(payload);
             if(this.isPromise(first))
             {
                 response = await first;
@@ -190,5 +180,38 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
      */
     private isPromise(maybePromise:any) {
         return !!maybePromise && (typeof maybePromise === 'object' || typeof maybePromise === 'function') && typeof maybePromise.then === 'function';
+    }
+
+    /**
+     * @param eventName
+     * @param target
+     * @private
+     */
+    private recalculateOrder<T extends keyof Events>(eventName: T, target: 'filterer'|'event'){
+        let registrations = target === 'filterer' ? this.filterers[eventName] : this.listeners[eventName];
+        let map = (target === 'filterer') ? this.orderedFilterers : this.orderedListeners;
+        if (typeof registrations === 'undefined')
+        {
+            delete map[eventName];
+            return;
+        }
+
+        let flattened: (AlloyEventListenerRegistrationType<Events,any>|AlloyEventFiltererRegistrationType<Events,any>)[] = [];
+        Object.values(registrations).forEach((priorities) => {
+            priorities.forEach(registration => {
+                flattened.push(registration)
+            })
+        });
+
+
+        if(flattened.length === 0)
+        {
+            if(typeof map[eventName] !== 'undefined')
+                delete map[eventName]
+        }
+        else
+        {
+            map[eventName] = flattened;
+        }
     }
 }
