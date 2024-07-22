@@ -96,6 +96,9 @@ If not given, will default to `10`
         priority: 1
     })
 
+Within the scope of the same priority, registration order is respected.  
+That is to say, the filter which was registered the earliest will be executed first.
+
 ## Context
 Both event listeners and filterers callback functions are called with a second parameter, the execution context.  
 The context is largely a plain object which the implementing code can use to provide globally accessible values to the various callback functions instead of forcing the individual functions into determining those things themselves.
