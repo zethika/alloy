@@ -3,19 +3,22 @@ import {
     AlloyEventListenerRegistrationType,
     AlloyPossibleEventsMapType,
     AlloyEventListenerCallbackType,
-    AlloyFilterCallbackType, AlloyFilterCallbackResponseType, AlloyApplyFilterResponse, AlloyContextMapType
+    AlloyFilterCallbackType,
+    AlloyFilterCallbackResponseType,
+    AlloyApplyFilterResponse,
+    AlloyContextMapType,
+    AlloyEventType, AlloyInternalContextMapType, ValueOf
 } from "./index";
 
-type ListenerRegistrationsMapType<Events extends AlloyPossibleEventsMapType, Context extends AlloyContextMapType = object> = Partial<Record<keyof Events, Record<number,AlloyEventListenerRegistrationType<Events,any,Context>[]>>>;
-type FiltererRegistrationsMapType<Events extends AlloyPossibleEventsMapType, Context extends AlloyContextMapType = object> = Partial<Record<keyof Events, Record<number,AlloyEventFiltererRegistrationType<Events,any,Context>[]>>>;
-type ValueOf<T> = T[keyof T];
+type ListenerRegistrationsMapType<Events extends AlloyPossibleEventsMapType, Context extends AlloyContextMapType<Events> = AlloyContextMapType<Events>> = Partial<Record<keyof Events, Record<number,AlloyEventListenerRegistrationType<Events,any,Context>[]>>>;
+type FiltererRegistrationsMapType<Events extends AlloyPossibleEventsMapType, Context extends AlloyContextMapType<Events> = AlloyContextMapType<Events>> = Partial<Record<keyof Events, Record<number,AlloyEventFiltererRegistrationType<Events,any,Context>[]>>>;
 
-export default class Alloy<Events extends AlloyPossibleEventsMapType, Context extends AlloyContextMapType = object> {
+export default class Alloy<Events extends AlloyPossibleEventsMapType, Context extends AlloyContextMapType<Events> = AlloyContextMapType<Events>> {
     private _running: boolean = true;
 
     private _context: Context;
 
-    private pendingEvents: {eventName: keyof Events, payload: ValueOf<Events>}[] = [];
+    private pendingEvents: AlloyEventType<Events>[] = [];
 
     private listeners: ListenerRegistrationsMapType<Events,Context> = {}
     private filterers: FiltererRegistrationsMapType<Events,Context> = {}
@@ -168,15 +171,22 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType, Context ex
             if (typeof registrations === 'undefined' || registrations.length === 0)
                 continue;
 
+            this.setAlloyContextKey('originalEvent',toFire[i])
+
             const filterResponse = await this.applyFilters(toFire[i].eventName,toFire[i].payload);
             if(filterResponse.cancelEvent)
+            {
+                this.setAlloyContextKey('originalEvent',undefined)
                 continue;
+            }
 
             for(let i = 0; i < registrations.length; i++){
                 const response = registrations[i].cb(filterResponse.value,this.context);
                 if(this.isPromise(response))
                     await response;
             }
+
+            this.setAlloyContextKey('originalEvent',undefined)
         }
     }
 
@@ -254,5 +264,18 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType, Context ex
         {
             map[eventName] = flattened;
         }
+    }
+
+    /**
+     *
+     * @param key
+     * @param value
+     * @private
+     */
+    private setAlloyContextKey(key: keyof AlloyInternalContextMapType<Events>, value: ValueOf<AlloyInternalContextMapType<Events>>){
+        if(typeof this.context._alloy === 'undefined')
+            this.context._alloy = {};
+
+        this.context._alloy[key] = value;
     }
 }

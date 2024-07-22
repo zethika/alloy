@@ -1,8 +1,17 @@
 import Alloy from "./Alloy";
 
+export type ValueOf<T> = T[keyof T];
 export type AlloyPossibleEventsMapType = object
-export type AlloyContextMapType = object
 
+export interface AlloyEventType<Events extends AlloyPossibleEventsMapType>{eventName: keyof Events, payload: ValueOf<Events>}
+
+export interface AlloyInternalContextMapType<Events extends AlloyPossibleEventsMapType> {
+    originalEvent?: AlloyEventType<Events>
+}
+
+export interface AlloyContextMapType<Events extends AlloyPossibleEventsMapType> {
+    _alloy?: AlloyInternalContextMapType<Events>
+}
 export interface AlloyFilterCallbackResponseType<Events extends AlloyPossibleEventsMapType, Event extends keyof Events> {
     stopFilters?: boolean,
     cancelEvent?: boolean,
