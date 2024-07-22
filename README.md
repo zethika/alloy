@@ -4,7 +4,7 @@ Alloy is an event bus capable of having both regular event listeners, event payl
 Both event listeners and filterers have support for being both async and sync, as well as having a prioritized execution sequence.
 
 ## Triggering events
-To trigger an event, call the "triggerEvent" function.  
+To trigger an event, call the `triggerEvent` function.  
 It returns a promise which will resolve when all event listeners on the event has finished.
 
     const alloy = new Alloy();
