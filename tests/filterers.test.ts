@@ -14,7 +14,7 @@ describe('Alloy/listeners',() => {
 
         // Should have been triggered once at this point, called with the same value
         expect(cb).toHaveBeenCalledTimes(1)
-        expect(cb).toHaveBeenCalledWith("foo")
+        expect(cb).toHaveBeenCalledWith("foo",expect.anything())
 
 
         alloy.addFilterer("fooTest",{
@@ -29,7 +29,7 @@ describe('Alloy/listeners',() => {
 
         // Should have been called 2 times in total at this point, and had the value changed from the filter
         expect(cb).toHaveBeenCalledTimes(2)
-        expect(cb).toHaveBeenCalledWith("bar")
+        expect(cb).toHaveBeenCalledWith("bar",expect.anything())
     })
 
     test('Can handle just being fed a function', async () => {
@@ -46,7 +46,7 @@ describe('Alloy/listeners',() => {
 
         // Should have been triggered once at this point, called with undefined
         expect(cb).toHaveBeenCalledTimes(1)
-        expect(cb).toHaveBeenCalledWith("foo1")
+        expect(cb).toHaveBeenCalledWith("foo1",expect.anything())
     })
 
     test('Can remove filters', async () => {
@@ -69,7 +69,7 @@ describe('Alloy/listeners',() => {
 
         // Since the filter is on, the value should be bar
         expect(cb).toHaveBeenCalledTimes(1)
-        expect(cb).toHaveBeenCalledWith("bar")
+        expect(cb).toHaveBeenCalledWith("bar",expect.anything())
 
         alloy.removeFilterer("fooTest",filter)
 
@@ -77,7 +77,7 @@ describe('Alloy/listeners',() => {
 
         // Since the filter is off, the value should be bar
         expect(cb).toHaveBeenCalledTimes(2)
-        expect(cb).toHaveBeenCalledWith("foo")
+        expect(cb).toHaveBeenCalledWith("foo",expect.anything())
     })
 
     test('Can handle priority', async () => {
@@ -110,7 +110,7 @@ describe('Alloy/listeners',() => {
 
         // Since the filter is off, the value should be bar
         expect(cb).toHaveBeenCalledTimes(1)
-        expect(cb).toHaveBeenCalledWith("foo123")
+        expect(cb).toHaveBeenCalledWith("foo123",expect.anything())
     })
 
     test('Can handle promises', async () => {
@@ -150,7 +150,7 @@ describe('Alloy/listeners',() => {
         await alloy.triggerEvent("fooTest", "foo")
 
         expect(cb).toHaveBeenCalledTimes(1)
-        expect(cb).toHaveBeenCalledWith("foo123")
+        expect(cb).toHaveBeenCalledWith("foo123",expect.anything())
     })
 
     test('Can handle stop filters', async () => {
@@ -181,7 +181,7 @@ describe('Alloy/listeners',() => {
 
         // the value should only have a 1, since the second filter shouldn't have been called
         expect(cb).toHaveBeenCalledTimes(1)
-        expect(cb).toHaveBeenCalledWith("foo1")
+        expect(cb).toHaveBeenCalledWith("foo1",expect.anything())
     })
 
     test('Can handle cancel event', async () => {

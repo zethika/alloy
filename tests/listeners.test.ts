@@ -14,7 +14,7 @@ describe('Alloy/listeners',() => {
 
         // Should have been triggered once at this point, called with undefined
         expect(cb).toHaveBeenCalledTimes(1)
-        expect(cb).toHaveBeenCalledWith(undefined)
+        expect(cb).toHaveBeenCalledWith(undefined,expect.anything())
 
         await alloy.triggerEvent("noParameterTest",undefined)
         await alloy.triggerEvent("noParameterTest",undefined)
@@ -31,7 +31,7 @@ describe('Alloy/listeners',() => {
 
         // Should have been triggered once at this point, called with undefined
         expect(cb).toHaveBeenCalledTimes(1)
-        expect(cb).toHaveBeenCalledWith(undefined)
+        expect(cb).toHaveBeenCalledWith(undefined,expect.anything())
     })
     test('Can have multiple listeners', async () => {
         const alloy = new Alloy<TestEvents>();
@@ -46,9 +46,9 @@ describe('Alloy/listeners',() => {
 
         // Both callbacks should have been called exactly once
         expect(cb1).toHaveBeenCalledTimes(1)
-        expect(cb1).toHaveBeenCalledWith(undefined)
+        expect(cb1).toHaveBeenCalledWith(undefined,expect.anything())
         expect(cb2).toHaveBeenCalledTimes(1)
-        expect(cb2).toHaveBeenCalledWith(undefined)
+        expect(cb2).toHaveBeenCalledWith(undefined,expect.anything())
     })
     test('Listeners can be deregistered', async () => {
         const alloy = new Alloy<TestEvents>();

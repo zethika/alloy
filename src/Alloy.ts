@@ -3,22 +3,29 @@ import {
     AlloyEventListenerRegistrationType,
     AlloyPossibleEventsMapType,
     AlloyEventListenerCallbackType,
-    AlloyFilterCallbackType, AlloyFilterCallbackResponseType, AlloyApplyFilterResponse
+    AlloyFilterCallbackType, AlloyFilterCallbackResponseType, AlloyApplyFilterResponse, AlloyContextMapType
 } from "./index";
 
-type ListenerRegistrationsMapType<Events extends AlloyPossibleEventsMapType> = Partial<Record<keyof Events, Record<number,AlloyEventListenerRegistrationType<Events,any>[]>>>;
-type FiltererRegistrationsMapType<Events extends AlloyPossibleEventsMapType> = Partial<Record<keyof Events, Record<number,AlloyEventFiltererRegistrationType<Events,any>[]>>>;
+type ListenerRegistrationsMapType<Events extends AlloyPossibleEventsMapType, Context extends AlloyContextMapType = object> = Partial<Record<keyof Events, Record<number,AlloyEventListenerRegistrationType<Events,any,Context>[]>>>;
+type FiltererRegistrationsMapType<Events extends AlloyPossibleEventsMapType, Context extends AlloyContextMapType = object> = Partial<Record<keyof Events, Record<number,AlloyEventFiltererRegistrationType<Events,any,Context>[]>>>;
 type ValueOf<T> = T[keyof T];
-export default class Alloy<Events extends AlloyPossibleEventsMapType> {
+
+export default class Alloy<Events extends AlloyPossibleEventsMapType, Context extends AlloyContextMapType = object> {
     private _running: boolean = true;
+
+    private _context: Context;
 
     private pendingEvents: {eventName: keyof Events, payload: ValueOf<Events>}[] = [];
 
-    private listeners: ListenerRegistrationsMapType<Events> = {}
-    private filterers: FiltererRegistrationsMapType<Events> = {}
+    private listeners: ListenerRegistrationsMapType<Events,Context> = {}
+    private filterers: FiltererRegistrationsMapType<Events,Context> = {}
 
-    private orderedListeners: Partial<Record<keyof Events, AlloyEventListenerRegistrationType<Events,any>[]>> = {};
-    private orderedFilterers: Partial<Record<keyof Events, AlloyEventFiltererRegistrationType<Events,any>[]>> = {};
+    private orderedListeners: Partial<Record<keyof Events, AlloyEventListenerRegistrationType<Events,any,Context>[]>> = {};
+    private orderedFilterers: Partial<Record<keyof Events, AlloyEventFiltererRegistrationType<Events,any,Context>[]>> = {};
+
+    constructor(context?: Context) {
+        this._context = context ?? {} as Context;
+    }
 
     pause(){
         this._running = false;
@@ -29,14 +36,22 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
         await this.firePending();
     }
 
+    get context(): Context {
+        return this._context;
+    }
+
+    set context(value: Context) {
+        this._context = value;
+    }
+
     /**
      *
      * @param eventName
      * @param registration
      */
-    addEventListener<T extends keyof Events>(eventName: T, registration: AlloyEventListenerRegistrationType<Events,T>|AlloyEventListenerCallbackType<Events,T>)
+    addEventListener<T extends keyof Events>(eventName: T, registration: AlloyEventListenerRegistrationType<Events,T,Context>|AlloyEventListenerCallbackType<Events,T,Context>)
     {
-        const parsed:AlloyEventListenerRegistrationType<Events,T> = typeof registration === 'function' ? {cb: registration} : registration
+        const parsed:AlloyEventListenerRegistrationType<Events,T,Context> = typeof registration === 'function' ? {cb: registration} : registration
         this.addRegistrationOnMap(this.listeners,eventName,parsed)
         this.recalculateOrder(eventName,'event');
     }
@@ -46,7 +61,7 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
      * @param eventName
      * @param fn
      */
-    removeEventListener<T extends keyof Events>(eventName: T, fn: AlloyEventListenerCallbackType<Events,T>)
+    removeEventListener<T extends keyof Events>(eventName: T, fn: AlloyEventListenerCallbackType<Events,T,Context>)
     {
         this.removeRegistrationOnMap(this.listeners,eventName,fn)
         this.recalculateOrder(eventName,'event');
@@ -57,9 +72,9 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
      * @param eventName
      * @param registration
      */
-    addFilterer<T extends keyof Events>(eventName: T, registration: AlloyEventFiltererRegistrationType<Events,T>|AlloyFilterCallbackType<Events,T>)
+    addFilterer<T extends keyof Events>(eventName: T, registration: AlloyEventFiltererRegistrationType<Events,T,Context>|AlloyFilterCallbackType<Events,T,Context>)
     {
-        const parsed: AlloyEventFiltererRegistrationType<Events,T> = typeof registration === 'function' ? {cb: registration} : registration
+        const parsed: AlloyEventFiltererRegistrationType<Events,T,Context> = typeof registration === 'function' ? {cb: registration} : registration
         this.addRegistrationOnMap(this.filterers,eventName,parsed)
         this.recalculateOrder(eventName,'filterer');
     }
@@ -69,7 +84,7 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
      * @param eventName
      * @param fn
      */
-    removeFilterer<T extends keyof Events>(eventName: T, fn: AlloyFilterCallbackType<Events,T>)
+    removeFilterer<T extends keyof Events>(eventName: T, fn: AlloyFilterCallbackType<Events,T,Context>)
     {
         this.removeRegistrationOnMap(this.filterers,eventName,fn)
         this.recalculateOrder(eventName,'filterer');
@@ -82,7 +97,7 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
      * @param registration
      * @private
      */
-    private addRegistrationOnMap<T extends keyof Events>(map: ListenerRegistrationsMapType<Events>|FiltererRegistrationsMapType<Events>, eventName: T, registration: AlloyEventListenerRegistrationType<Events,T>|AlloyEventFiltererRegistrationType<Events,T>){
+    private addRegistrationOnMap<T extends keyof Events>(map: ListenerRegistrationsMapType<Events,Context>|FiltererRegistrationsMapType<Events,Context>, eventName: T, registration: AlloyEventListenerRegistrationType<Events,T,Context>|AlloyEventFiltererRegistrationType<Events,T,Context>){
         if(typeof map[eventName] === 'undefined')
         {
             // @todo can this be typed reliably?
@@ -106,7 +121,7 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
      * @param fn
      * @private
      */
-    private removeRegistrationOnMap<T extends keyof Events>(map: ListenerRegistrationsMapType<Events>|FiltererRegistrationsMapType<Events>, eventName: T, fn: AlloyEventListenerCallbackType<Events,T>|AlloyFilterCallbackType<Events,T>)
+    private removeRegistrationOnMap<T extends keyof Events>(map: ListenerRegistrationsMapType<Events,Context>|FiltererRegistrationsMapType<Events,Context>, eventName: T, fn: AlloyEventListenerCallbackType<Events,T,Context>|AlloyFilterCallbackType<Events,T,Context>)
     {
         const priorities = map[eventName];
         if (typeof priorities === 'undefined')
@@ -158,7 +173,7 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
                 continue;
 
             for(let i = 0; i < registrations.length; i++){
-                const response = registrations[i].cb(filterResponse.value);
+                const response = registrations[i].cb(filterResponse.value,this.context);
                 if(this.isPromise(response))
                     await response;
             }
@@ -177,7 +192,7 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
 
         for(let i = 0; i < registrations.length; i++){
             let response: AlloyFilterCallbackResponseType<Events,T>;
-            const first = registrations[i].cb(payload);
+            const first = registrations[i].cb(payload,this.context);
             if(this.isPromise(first))
             {
                 response = await first;
@@ -222,7 +237,7 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
             return;
         }
 
-        let flattened: (AlloyEventListenerRegistrationType<Events,any>|AlloyEventFiltererRegistrationType<Events,any>)[] = [];
+        let flattened: (AlloyEventListenerRegistrationType<Events,any,Context>|AlloyEventFiltererRegistrationType<Events,any,Context>)[] = [];
         Object.values(registrations).forEach((priorities) => {
             priorities.forEach(registration => {
                 flattened.push(registration)
