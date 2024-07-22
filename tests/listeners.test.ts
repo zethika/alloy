@@ -129,4 +129,35 @@ describe('Alloy/listeners',() => {
         // The final callback should not be called before the promise has resolved
         expect(sequence).toMatchObject([1,2,3])
     })
+    test('Can handle pausing / unpausing',async () => {
+        const alloy = new Alloy<TestEvents>();
+        alloy.pause()
+
+        let sequence: number[] = [];
+        const cb = jest.fn();
+        const cb2 = () => {
+            return new Promise<void>((resolve) => {
+                setTimeout(() => {
+                    sequence.push(2)
+                    resolve();
+                },100)
+            })
+        };
+
+        alloy.addEventListener("noParameterTest",cb)
+        alloy.addEventListener("noParameterTest",{cb:cb2})
+
+        await alloy.triggerEvent("noParameterTest",undefined)
+
+        // No callbacks should have been called at this point, no matter if the were promises or not
+        expect(cb).toHaveBeenCalledTimes(0)
+        expect(sequence).toMatchObject([])
+
+        await alloy.start()
+
+        // Starting should alone trigger a full flush of pending events
+        // Sequence should be respected, even through a pause
+        expect(sequence).toMatchObject([2])
+        expect(cb).toHaveBeenCalledTimes(1)
+    })
 });

@@ -8,13 +8,26 @@ import {
 
 type ListenerRegistrationsMapType<Events extends AlloyPossibleEventsMapType> = Partial<Record<keyof Events, Record<number,AlloyEventListenerRegistrationType<Events,any>[]>>>;
 type FiltererRegistrationsMapType<Events extends AlloyPossibleEventsMapType> = Partial<Record<keyof Events, Record<number,AlloyEventFiltererRegistrationType<Events,any>[]>>>;
-
+type ValueOf<T> = T[keyof T];
 export default class Alloy<Events extends AlloyPossibleEventsMapType> {
+    private _running: boolean = true;
+
+    private pendingEvents: {eventName: keyof Events, payload: ValueOf<Events>}[] = [];
+
     private listeners: ListenerRegistrationsMapType<Events> = {}
     private filterers: FiltererRegistrationsMapType<Events> = {}
 
     private orderedListeners: Partial<Record<keyof Events, AlloyEventListenerRegistrationType<Events,any>[]>> = {};
     private orderedFilterers: Partial<Record<keyof Events, AlloyEventFiltererRegistrationType<Events,any>[]>> = {};
+
+    pause(){
+        this._running = false;
+    }
+
+    async start() {
+        this._running = true;
+        await this.firePending();
+    }
 
     /**
      *
@@ -25,7 +38,6 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
     {
         const parsed:AlloyEventListenerRegistrationType<Events,T> = typeof registration === 'function' ? {cb: registration} : registration
         this.addRegistrationOnMap(this.listeners,eventName,parsed)
-
         this.recalculateOrder(eventName,'event');
     }
 
@@ -123,19 +135,33 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
      */
     async triggerEvent<T extends keyof Events>(eventName: T, payload: Events[T])
     {
-        const registrations = this.orderedListeners[eventName];
-        // If no registrations are present, we don't need to perform further calculation
-        if (typeof registrations === 'undefined' || registrations.length === 0)
-            return;
+        this.pendingEvents.push({eventName,payload});
+        if(this._running)
+            await this.firePending();
+    }
 
-        const filterResponse = await this.applyFilters(eventName,payload);
-        if(filterResponse.cancelEvent)
-            return;
+    /**
+     *
+     */
+    async firePending(){
+        let toFire = [...this.pendingEvents]
+        this.pendingEvents = [];
+        for(let i = 0; i < toFire.length; i++)
+        {
+            const registrations = this.orderedListeners[toFire[i].eventName];
+            // If no registrations are present, we don't need to perform further calculation
+            if (typeof registrations === 'undefined' || registrations.length === 0)
+                return;
 
-        for(let i = 0; i < registrations.length; i++){
-            const response = registrations[i].cb(filterResponse.value);
-            if(this.isPromise(response))
-                await response;
+            const filterResponse = await this.applyFilters(toFire[i].eventName,toFire[i].payload);
+            if(filterResponse.cancelEvent)
+                return;
+
+            for(let i = 0; i < registrations.length; i++){
+                const response = registrations[i].cb(filterResponse.value);
+                if(this.isPromise(response))
+                    await response;
+            }
         }
     }
 

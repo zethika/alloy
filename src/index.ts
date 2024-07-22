@@ -1,7 +1,6 @@
 import Alloy from "./Alloy";
 
 export type AlloyPossibleEventsMapType = object
-
 export type AlloyEventListenerCallbackType<Events extends AlloyPossibleEventsMapType, Event extends keyof Events> = (payload: Events[Event]) => any|Promise<any>;
 
 export interface AlloyFilterCallbackResponseType<Events extends AlloyPossibleEventsMapType, Event extends keyof Events> {
