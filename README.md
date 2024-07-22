@@ -98,8 +98,7 @@ If not given, will default to `10`
 
 ## Context
 Both event listeners and filterers callback functions are called with a second parameter, the execution context.  
-The context is largely a plain object which the implementing code can use to provide globally accessible values to the various callback functions  
-instead of forcing the individual functions into determining those things themselves.
+The context is largely a plain object which the implementing code can use to provide globally accessible values to the various callback functions instead of forcing the individual functions into determining those things themselves.
 
 The only value provided by Alloy here, is the `_alloy` property, which includes the original event before any filters affected it.
 
