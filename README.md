@@ -1,7 +1,7 @@
 # [Alloy](https://github.com/zethika/alloy) &middot; [![npm version](https://img.shields.io/npm/v/@zethika/alloy.svg?style=flat)](https://www.npmjs.com/package/@zethika/alloy) 
 
-Alloy is an event bus capable of having both regular event listeners, event payload mutators and delayed execution, within a provided context.  
-Both event listeners and data filterers may be either an object describing the registration in more detail, or simply a function.
+Alloy is an event bus capable of having both regular event listeners, event payload mutators/deciders ("filterers") and delayed the events' execution, within a provided context.  
+Both event listeners and filterers have support for being both async and sync, as well as having a prioritized execution sequence.
 
 ## Triggering events
 To trigger an event, call the "triggerEvent" function.  
