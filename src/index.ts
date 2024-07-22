@@ -12,6 +12,7 @@ export interface AlloyInternalContextMapType<Events extends AlloyPossibleEventsM
 export interface AlloyContextMapType<Events extends AlloyPossibleEventsMapType> {
     _alloy?: AlloyInternalContextMapType<Events>
 }
+
 export interface AlloyFilterCallbackResponseType<Events extends AlloyPossibleEventsMapType, Event extends keyof Events> {
     stopFilters?: boolean,
     cancelEvent?: boolean,

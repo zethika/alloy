@@ -13,9 +13,16 @@
         "version": "git add -A src",
         "postversion": "git push && git push --tags"
     },
-    "keywords": [],
+    "keywords": [
+        "alloy",
+        "events",
+        "event listener",
+        "event mutation",
+        "event filtering",
+        "context"
+    ],
     "author": "Kenneth Berg",
-    "license": "ISC",
+    "license": "MIT",
     "devDependencies": {
         "@types/jest": "^29.5.3",
         "@types/qs": "^6.9.8",
