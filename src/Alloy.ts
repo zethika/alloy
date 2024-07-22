@@ -151,11 +151,11 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType> {
             const registrations = this.orderedListeners[toFire[i].eventName];
             // If no registrations are present, we don't need to perform further calculation
             if (typeof registrations === 'undefined' || registrations.length === 0)
-                return;
+                continue;
 
             const filterResponse = await this.applyFilters(toFire[i].eventName,toFire[i].payload);
             if(filterResponse.cancelEvent)
-                return;
+                continue;
 
             for(let i = 0; i < registrations.length; i++){
                 const response = registrations[i].cb(filterResponse.value);
