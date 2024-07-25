@@ -150,43 +150,78 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType, Context ex
      *
      * @param eventName
      * @param payload
+     * @param callback
      */
-    async triggerEvent<T extends keyof Events>(eventName: T, payload: Events[T])
+    async triggerEvent<T extends keyof Events>(eventName: T, payload: Events[T], callback?: AlloyEventListenerCallbackType<Events,T,Context>)
     {
-        this.pendingEvents.push({eventName,payload});
         if(this._running)
-            await this.firePending();
+        {
+            await this.fireSingleEvent({eventName,payload},callback);
+        }
+        else
+        {
+            this.pendingEvents.push({eventName,payload});
+        }
     }
 
     /**
      *
      */
-    async firePending(){
+    private async firePending(){
         let toFire = [...this.pendingEvents]
         this.pendingEvents = [];
         for(let i = 0; i < toFire.length; i++)
         {
-            const registrations = this.orderedListeners[toFire[i].eventName];
-            // If no registrations are present, we don't need to perform further calculation
-            if (typeof registrations === 'undefined' || registrations.length === 0)
-                continue;
+            await this.fireSingleEvent(toFire[i])
+        }
+    }
 
-            this.setAlloyContextKey('originalEvent',toFire[i])
+    /**
+     *
+     * @param event
+     * @param callback
+     * @private
+     */
+    private async fireSingleEvent(event: AlloyEventType<Events>,callback?: AlloyEventListenerCallbackType<Events,any,Context>){
+        const registrations = this.orderedListeners[event.eventName];
 
-            const filterResponse = await this.applyFilters(toFire[i].eventName,toFire[i].payload);
-            if(filterResponse.cancelEvent)
-            {
-                this.setAlloyContextKey('originalEvent',undefined)
-                continue;
-            }
+        // If no registrations are present, we don't need to perform further calculation
+        if ((typeof registrations === 'undefined' || registrations.length === 0) && typeof callback !== 'function')
+            return;
 
-            for(let i = 0; i < registrations.length; i++){
-                const response = registrations[i].cb(filterResponse.value,this.context);
-                if(this.isPromise(response))
-                    await response;
-            }
+        this.setAlloyContextKey('originalEvent',event)
 
+        const filterResponse = await this.applyFilters(event.eventName,event.payload);
+        // If the filters requests the event to cancel, neither the registrations nor the callback is called
+        if(filterResponse.cancelEvent)
+        {
             this.setAlloyContextKey('originalEvent',undefined)
+            return;
+        }
+
+        if(Array.isArray(registrations))
+        {
+            for(let i = 0; i < registrations.length; i++){
+                await this.maybePerformPromiseLikeCallback(filterResponse.value,registrations[i].cb)
+            }
+        }
+
+        await this.maybePerformPromiseLikeCallback(event.payload,callback)
+        this.setAlloyContextKey('originalEvent',undefined)
+    }
+
+    /**
+     *
+     * @param value
+     * @param callback
+     * @private
+     */
+    private async maybePerformPromiseLikeCallback(value: ValueOf<Events>,callback?: AlloyEventListenerCallbackType<Events,any,Context>){
+        if(typeof callback === 'function')
+        {
+            const response = callback(value,this.context)
+            if(this.isPromise(response))
+                await response;
         }
     }
 

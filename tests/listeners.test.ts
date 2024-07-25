@@ -33,6 +33,32 @@ describe('Alloy/listeners',() => {
         expect(cb).toHaveBeenCalledTimes(1)
         expect(cb).toHaveBeenCalledWith(undefined,expect.anything())
     })
+    test('Can handle calling an explicitly given callback', async () => {
+        const alloy = new Alloy<TestEvents>();
+
+        const cb = jest.fn();
+        const cb2 = jest.fn();
+        alloy.addEventListener("noParameterTest",cb)
+        await alloy.triggerEvent("noParameterTest",undefined,cb2)
+
+        // Should have been triggered once at this point, called with undefined
+        expect(cb).toHaveBeenCalledTimes(1)
+        expect(cb).toHaveBeenCalledWith(undefined,expect.anything())
+
+        // the explicitly given callback should also have been called at this point
+        expect(cb2).toHaveBeenCalledTimes(1)
+        expect(cb2).toHaveBeenCalledWith(undefined,expect.anything())
+    })
+    test('Can handle calling an explicitly given callback even if no other registrations are present', async () => {
+        const alloy = new Alloy<TestEvents>();
+
+        const cb = jest.fn();
+        await alloy.triggerEvent("noParameterTest",undefined,cb)
+
+        // Even though the event is short circuited due to there being no registrations, the callback is still called
+        expect(cb).toHaveBeenCalledTimes(1)
+        expect(cb).toHaveBeenCalledWith(undefined,expect.anything())
+    })
     test('Can have multiple listeners', async () => {
         const alloy = new Alloy<TestEvents>();
 

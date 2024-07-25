@@ -13,6 +13,15 @@ It returns a promise which will resolve when all event listeners on the event ha
     })
     await alloy.triggerEvent("fooEvent","foo")
 
+You can explicitly provide the `triggerEvent` function with an additional callback.
+This callback will be fired after all other event listeners have finished, and will fire even if no other registrations exist on an event.
+
+    const alloy = new Alloy();
+    await alloy.triggerEvent("fooEvent","foo", (payload) => {
+        console.log(payload) // foo
+    })
+
+Use this callback to allow remote code to react to single events / affect their payload, which you yourself also needs to react to, without having to register and deregister an event listener / filterer.
 
 ## Event listeners
 To add an event listener, you can simply provide a function to the `addEventListener` function
