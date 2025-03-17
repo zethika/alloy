@@ -217,4 +217,13 @@ describe('Alloy/listeners',() => {
         expect(hasFired).toBeFalsy()
     })
 
+    test('Can alter plain value', async () => {
+        const alloy = new Alloy<TestEvents>();
+        alloy.addFilterer("fooTest",(_v1,ctx) => {
+            return {value: ctx._cb?.newValue}
+        })
+
+        const newValue = await alloy.applyFilters("fooTest", "foo",{newValue: "bar"})
+        expect(newValue.value).toBe("bar")
+    })
 })

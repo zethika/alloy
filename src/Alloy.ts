@@ -229,15 +229,20 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType, Context ex
      *
      * @param eventName
      * @param payload
+     * @param callbackContext
      */
-    async applyFilters<T extends keyof Events>(eventName: T, payload: Events[T]): Promise<AlloyApplyFilterResponse<Events,T>>{
+    async applyFilters<T extends keyof Events>(eventName: T, payload: Events[T], callbackContext?: Record<string, any>): Promise<AlloyApplyFilterResponse<Events,T>>{
         const registrations = this.orderedFilterers[eventName];
         if (typeof registrations === 'undefined')
             return {value: payload};
 
+        let context = {...this.context};
+        if(typeof callbackContext !== 'undefined')
+            context._cb = callbackContext;
+
         for(let i = 0; i < registrations.length; i++){
             let response: AlloyFilterCallbackResponseType<Events,T>;
-            const first = registrations[i].cb(payload,this.context);
+            const first = registrations[i].cb(payload,context);
             if(this.isPromise(first))
             {
                 response = await first;
