@@ -81,6 +81,32 @@ To remove a filterer again, you can call the `removeFilterer` function
     alloy.removeFilterer("fooEvent",callback)
 
 
+Filterers can also be used outside of the event loop, for plain modification of values, like so:
+
+    const alloy = new Alloy();
+    alloy.addFilterer("fooTest",(previousValue,context) => {
+        return {value: "bar"}
+    })
+
+    const value = await alloy.applyFilters("fooTest", "foo")
+    // value is "bar"
+
+### Running filters again
+It's possible to register a rerunner when calling applyFilters in such a way that they can be reran, for example after adding or removing filterers.  
+This can be done like so:
+
+    const alloy = new Alloy<TestEvents>();
+    const originalFilteredValue = await alloy.applyFilters("fooTest", "foo",undefined,{ // The fourth parameter is a rerunner registration
+        id: "fooReg", // An id to identify the rerunner, 
+        cb:(newValue) => {
+            // newValue will be the filtered value after applying all filters on the original value again.
+        }
+    })
+
+    // Rerun the registered rerunners on the "fooTest" filter.
+    // Reruns use the id of the registration to only match the -latest- filter application which is used as the basis for the rerun.
+    await alloy.rerunFilters('fooTest');
+
 ## Registration
 Both `addFilterer` and `addEventListener` accepts an object instead of a callback function.  
 This allows passing more detail, outside of certain defaults, to the function registration.
