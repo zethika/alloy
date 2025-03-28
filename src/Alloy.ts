@@ -7,11 +7,12 @@ import {
     AlloyFilterCallbackResponseType,
     AlloyApplyFilterResponse,
     AlloyContextMapType,
-    AlloyEventType, AlloyInternalContextMapType, ValueOf
+    AlloyEventType, AlloyInternalContextMapType, ValueOf, AlloyFilterRerunRegistrationType
 } from "./index";
 
 type ListenerRegistrationsMapType<Events extends AlloyPossibleEventsMapType, Context extends AlloyContextMapType<Events> = AlloyContextMapType<Events>> = Partial<Record<keyof Events, Record<number,AlloyEventListenerRegistrationType<Events,any,Context>[]>>>;
 type FiltererRegistrationsMapType<Events extends AlloyPossibleEventsMapType, Context extends AlloyContextMapType<Events> = AlloyContextMapType<Events>> = Partial<Record<keyof Events, Record<number,AlloyEventFiltererRegistrationType<Events,any,Context>[]>>>;
+type FiltererRerunRegistrationsMapType<Events extends AlloyPossibleEventsMapType> = Partial<Record<keyof Events, Record<string,{payload: Events[any], callbackContext?: Record<string, any>,registration: AlloyFilterRerunRegistrationType<Events,any>}>>>;
 
 export default class Alloy<Events extends AlloyPossibleEventsMapType, Context extends AlloyContextMapType<Events> = AlloyContextMapType<Events>> {
     private _running: boolean = true;
@@ -22,9 +23,11 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType, Context ex
 
     private listeners: ListenerRegistrationsMapType<Events,Context> = {}
     private filterers: FiltererRegistrationsMapType<Events,Context> = {}
+    private filtererReruns: FiltererRerunRegistrationsMapType<Events> = {}
 
     private orderedListeners: Partial<Record<keyof Events, AlloyEventListenerRegistrationType<Events,any,Context>[]>> = {};
     private orderedFilterers: Partial<Record<keyof Events, AlloyEventFiltererRegistrationType<Events,any,Context>[]>> = {};
+
 
     constructor(context?: Context) {
         this._context = context ?? {} as Context;
@@ -225,13 +228,38 @@ export default class Alloy<Events extends AlloyPossibleEventsMapType, Context ex
         }
     }
 
+    removeReRunner<T extends keyof Events>(eventName: T,id: string){
+        if(typeof this.filtererReruns[eventName] !== 'undefined' && typeof this.filtererReruns[eventName][id] !== 'undefined')
+            delete this.filtererReruns[eventName][id];
+    }
+
+    async rerunFilters<T extends keyof Events>(eventName: T){
+        let map = this.filtererReruns[eventName];
+        if(typeof map === 'undefined')
+            return;
+
+        for (const ctx of Object.values(map)) {
+            let result = await this.applyFilters(eventName,ctx.payload,ctx.callbackContext);
+            ctx.registration.cb(result)
+        }
+    }
+
     /**
      *
      * @param eventName
      * @param payload
      * @param callbackContext
+     * @param rerun
      */
-    async applyFilters<T extends keyof Events>(eventName: T, payload: Events[T], callbackContext?: Record<string, any>): Promise<AlloyApplyFilterResponse<Events,T>>{
+    async applyFilters<T extends keyof Events>(eventName: T, payload: Events[T], callbackContext?: Record<string, any>, rerun?: AlloyFilterRerunRegistrationType<Events,T>): Promise<AlloyApplyFilterResponse<Events,T>>{
+        if(typeof rerun !== 'undefined'){
+            if(typeof this.filtererReruns[eventName] === 'undefined')
+                this.filtererReruns[eventName] = {};
+
+            // We need to break all references
+            this.filtererReruns[eventName][rerun.id] = {registration:rerun,payload:JSON.parse(JSON.stringify(payload)),callbackContext: typeof callbackContext !== 'undefined' ? JSON.parse(JSON.stringify(callbackContext)) : undefined};
+        }
+
         const registrations = this.orderedFilterers[eventName];
         if (typeof registrations === 'undefined')
             return {value: payload};

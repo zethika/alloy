@@ -40,6 +40,11 @@ export interface AlloyEventFiltererRegistrationType<Events extends AlloyPossible
     cb: AlloyFilterCallbackType<Events,Event,Context>
 }
 
+export interface AlloyFilterRerunRegistrationType<Events extends AlloyPossibleEventsMapType, Event extends keyof Events> {
+    id: string,
+    cb: (value: AlloyApplyFilterResponse<Events,Event>) => void
+}
+
 export {
     Alloy
 }

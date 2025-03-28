@@ -226,4 +226,51 @@ describe('Alloy/listeners',() => {
         const newValue = await alloy.applyFilters("fooTest", "foo",{newValue: "bar"})
         expect(newValue.value).toBe("bar")
     })
+
+    test('Can handle reruns', async () => {
+        const alloy = new Alloy<TestEvents>();
+        let callbackValue = null;
+        const newValue = await alloy.applyFilters("fooTest", "foo",undefined,{
+            id: "fooReg",
+            cb:(value) => {
+                callbackValue = value.value
+            }
+        })
+        // Nothing has been done yet
+        expect(newValue.value).toBe("foo")
+        expect(callbackValue).toBe(null)
+
+        alloy.addFilterer("fooTest",(_v,_c) => {
+            return {value: 'bar'}
+        })
+
+        // Running the filters now results in the new value being changed to bar
+        const newValue2 = await alloy.applyFilters("fooTest", "foo")
+        expect(newValue2.value).toBe("bar")
+
+        // Rerun the filters
+        await alloy.rerunFilters('fooTest');
+
+        // Hasn't changed previous value
+        expect(newValue.value).toBe("foo")
+        expect(newValue2.value).toBe("bar")
+
+        // The callback received bar from the newly added filter
+        expect(callbackValue).toBe('bar')
+
+        // Removing another rerunnner has no effect
+        alloy.removeReRunner("fooTest","bar")
+        callbackValue = null;
+
+        // Rerun the filters and check that the callback value is still being set
+        await alloy.rerunFilters('fooTest');
+        expect(callbackValue).toBe("bar")
+
+        // Removing the rerunner makes it so the callback wont be called again
+        alloy.removeReRunner("fooTest","fooReg")
+        callbackValue = null;
+
+        await alloy.rerunFilters('fooTest');
+        expect(callbackValue).toBe(null)
+    })
 })
